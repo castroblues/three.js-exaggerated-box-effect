@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8" />
+        <title>Three.js Exaggerated Box Effect</title>
+        <style>
+            body {
+                margin: 0;
+                overflow: hidden;
+                background: #181818;
+            }
+
+            #sliderContainer {
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 350px;
+                z-index: 10;
+                text-align: center;
+                color: #eee;
+                font-family: sans-serif;
+            }
+
+            #exaggeration {
+                width: 300px;
+            }
+
+            #effectLabel {
+                font-size: 1.2em;
+                margin-bottom: 10px;
+                display: block;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="sliderContainer">
+            <span id="effectLabel">Exaggerated Effect</span>
+            <input id="exaggeration" type="range" min="0" max="100" value="0" />
+        </div>
+        <script type="module">
+            import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
+
+            // Scene, Camera, Renderer
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x181818);
+
+            const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 5;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            let mainLight = new THREE.PointLight(0xffaa88, 1, 30);
+            mainLight.position.set(2, 3, 6);
+            scene.add(mainLight);
+
+            let wildLight = new THREE.PointLight(0xff66aa, 0, 40);
+            wildLight.position.set(-4, 2, -3);
+            scene.add(wildLight);
+
+            // Box geometry + material
+            const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xdc2222, roughness: 0.3, metalness: 0.45 });
+            const box = new THREE.Mesh(boxGeometry, boxMaterial);
+            scene.add(box);
+
+            // Slider control
+            let exaggeration = 0;
+            document.getElementById('exaggeration').addEventListener('input', e => {
+                exaggeration = parseInt(e.target.value);
+            });
+
+            // Box "fragmentation" for exaggerated effect
+            function fragmentBox(mesh, intensity) {
+                // Get geometry vertices and modify them for glitchy effect
+                const position = mesh.geometry.attributes.position;
+                for (let i = 0; i < position.count; i++) {
+                    const orig = mesh.geometry.userData?.original || [];
+                    // Store originals on first run
+                    if (!orig[i]) {
+                        orig[i] = [
+                            position.getX(i),
+                            position.getY(i),
+                            position.getZ(i)
+                        ];
+                    }
+                    mesh.geometry.userData = { original: orig };
+                    // Apply noise based on intensity
+                    const factor = intensity * 0.03;
+                    position.setXYZ(
+                        i,
+                        orig[i][0] + (Math.random() - 0.5) * factor,
+                        orig[i][1] + (Math.random() - 0.5) * factor,
+                        orig[i][2] + (Math.random() - 0.5) * factor
+                    );
+                }
+                position.needsUpdate = true;
+            }
+
+            // Animate
+            let clock = new THREE.Clock();
+            function animate() {
+                requestAnimationFrame(animate);
+                let t = clock.getElapsedTime();
+
+                // Slider from 0 to 1
+                let amt = exaggeration / 100;
+
+                // Floating effect
+                let floatY = Math.sin(t * 1.1) * 0.2;
+                let floatX = Math.cos(t * 0.9) * 0.2;
+
+                // Calm mode
+                if (amt < 0.01) {
+                    box.position.set(floatX, floatY, 0);
+                    box.rotation.x += 0.004;
+                    box.rotation.y += 0.006;
+                    box.rotation.z += 0.003;
+
+                    // Restore geometry
+                    if (box.geometry.userData?.original) {
+                        const position = box.geometry.attributes.position;
+                        for (let i = 0; i < position.count; i++) {
+                            position.setXYZ(
+                                i,
+                                box.geometry.userData.original[i][0],
+                                box.geometry.userData.original[i][1],
+                                box.geometry.userData.original[i][2]
+                            );
+                        }
+                        position.needsUpdate = true;
+                    }
+
+                    // Warm calm light
+                    mainLight.intensity = 1;
+                    mainLight.color.set(0xffaa88);
+                    wildLight.intensity = 0;
+                } else {
+                    // Exaggerated effect: stutter + fragmentation + wild rotation/movement
+                    const stutter = Math.abs(Math.sin(t * (amt * 8 + 2))) * (amt * 0.25);
+
+                    box.position.x = floatX + (Math.random() - 0.5) * amt * 0.6 * stutter;
+                    box.position.y = floatY + (Math.random() - 0.5) * amt * 0.6 * stutter;
+                    box.position.z = (Math.random() - 0.5) * amt * 0.25 * stutter;
+
+                    box.rotation.x += 0.005 + stutter * amt * 0.15;
+                    box.rotation.y += 0.007 + stutter * amt * 0.17;
+                    box.rotation.z += 0.004 + stutter * amt * 0.11;
+
+                    fragmentBox(box, exaggeration);
+
+                    // Lighting exaggeration
+                    mainLight.intensity = 1 + amt * 2.5;
+                    mainLight.color.setHSL(0 + 0.2 * amt, 1, 0.6 + 0.3 * amt);
+                    wildLight.intensity = amt * 3;
+                    wildLight.color.setHSL(0.9 * amt, 1, 0.5 + 0.5 * amt);
+                    wildLight.position.x = -4 + Math.sin(t * 5) * amt * 4;
+                    wildLight.position.y = 2 + Math.cos(t * 7) * amt * 2;
+                    wildLight.position.z = -3 + Math.sin(t * 11) * amt * 8;
+                }
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        </script>
+    </body>
+
+</html>
