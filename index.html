@@ -8,22 +8,32 @@
             body {
                 margin: 0;
                 overflow: hidden;
-                background: #181818;
+                background: #18082E;
+                position: relative;
+                height: 100vh;
+            }
+
+            .visual {
+                position: relative;
+                z-index: 1;
+                width: 100%;
+                height: 100%;
+                transform: translateY(-14%);
             }
 
             #sliderContainer {
                 position: absolute;
-                top: 20px;
+                bottom: 0;
                 left: 50%;
-                transform: translateX(-50%);
+                transform: translateX(-50%) translateY(-100%);
                 width: 75%;
                 z-index: 10;
                 text-align: center;
                 color: #eee;
                 font-family: sans-serif;
-                padding-top: 44px;
             }
 
+            /* effect slider */
             #exaggeration {
                 width: 75%;
                 margin-bottom: 20px;
@@ -33,21 +43,30 @@
                 color: #eee;
                 padding: 20px;
                 border-radius: 5px;
-                outline: none;
+                outline: 1px solid #767676;
                 -webkit-appearance: none;
                 -moz-appearance: none;
                 appearance: none;
             }
 
             #effectLabel {
-                font-size: 2vh;
+                font-size: 3.2vh;
                 margin-bottom: 20px;
                 display: block;
+            }
+
+            .canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
             }
         </style>
     </head>
 
     <body>
+        <div class="visual">
+
+        </div>
         <div id="sliderContainer">
             <span id="effectLabel">Exaggerated Effect</span>
             <input id="exaggeration" type="range" min="0" max="100" value="0" />
@@ -57,27 +76,28 @@
 
             // Scene, Camera, Renderer
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x181818);
+            scene.background = new THREE.Color(0x18082E);
 
-            const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+            const camera = new THREE.PerspectiveCamera(70, window.innerWidth / (window.innerHeight), 0.1, 100);
             camera.position.z = 5;
 
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+            // document.body.appendChild(renderer.domElement).classList.add('canvas');
+            document.querySelector('.visual').appendChild(renderer.domElement).classList.add('canvas');
 
             // Lighting
-            let mainLight = new THREE.PointLight(0xffaa88, 1, 30);
+            let mainLight = new THREE.PointLight(0xFFFFE6, 1, 44);
             mainLight.position.set(2, 3, 6);
             scene.add(mainLight);
 
-            let wildLight = new THREE.PointLight(0xff66aa, 0, 40);
+            let wildLight = new THREE.PointLight(0x61B0FF, 0, 44);
             wildLight.position.set(-4, 2, -3);
             scene.add(wildLight);
 
             // Box geometry + material
             const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-            const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xdc2222, roughness: 0.3, metalness: 0.45 });
+            const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xDDFF5E, roughness: 0.8, metalness: 0.45 });
             const box = new THREE.Mesh(boxGeometry, boxMaterial);
             scene.add(box);
 
@@ -103,7 +123,7 @@
                     }
                     mesh.geometry.userData = { original: orig };
                     // Apply noise based on intensity
-                    const factor = intensity * 0.03;
+                    const factor = intensity * 0.013;
                     position.setXYZ(
                         i,
                         orig[i][0] + (Math.random() - 0.5) * factor,
@@ -150,7 +170,7 @@
 
                     // Warm calm light
                     mainLight.intensity = 1;
-                    mainLight.color.set(0xffaa88);
+                    mainLight.color.set(0xFFEDE6);
                     wildLight.intensity = 0;
                 } else {
                     // Exaggerated effect: stutter + fragmentation + wild rotation/movement
